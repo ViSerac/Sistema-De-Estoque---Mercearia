@@ -1,3 +1,5 @@
+use egui_plot::{Bar, BarChart, Plot};
+
 use crate::domain::{Movimentacao, Produto, TipoMovimentacao};
 use crate::repository::{movimentacao, produto};
 
@@ -11,6 +13,8 @@ pub struct DashboardState {
     pub estoque_baixo: Vec<Produto>,
     pub movimentacoes_recentes: Vec<Movimentacao>,
     pub movimentacoes_hoje: i64,
+    pub valor_total_estoque: f64,
+    pub movimentos_7dias: Vec<(String, i64, i64)>,
     pub carregado: bool,
 }
 
@@ -22,6 +26,8 @@ impl Default for DashboardState {
             estoque_baixo: Vec::new(),
             movimentacoes_recentes: Vec::new(),
             movimentacoes_hoje: 0,
+            valor_total_estoque: 0.0,
+            movimentos_7dias: Vec::new(),
             carregado: false,
         }
     }
@@ -36,6 +42,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
 
     secao_heading(ui, "Dashboard");
 
+    // — Linha de cards —
     ui.horizontal(|ui| {
         card_estatistica(
             ui,
@@ -66,11 +73,19 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             &s.movimentacoes_hoje.to_string(),
             Cores::VERDE,
         );
+        card_estatistica(
+            ui,
+            "Valor em Estoque",
+            &format!("R$ {:.0}", s.valor_total_estoque),
+            egui::Color32::from_rgb(40, 80, 140),
+        );
     });
 
     ui.add_space(20.0);
 
-    ui.columns(2, |cols| {
+    // — Três colunas: Estoque Baixo | Gráfico 7 dias | Recentes —
+    ui.columns(3, |cols| {
+        // Coluna esquerda — estoque baixo
         let col0 = &mut cols[0];
         col0.label(
             egui::RichText::new("Estoque Baixo")
@@ -86,7 +101,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         } else {
             egui::ScrollArea::vertical()
                 .id_salt("dash_estoque_scroll")
-                .max_height(300.0)
+                .max_height(280.0)
                 .show(col0, |ui| {
                     for p in &app.dashboard_state.estoque_baixo {
                         ui.horizontal(|ui| {
@@ -94,30 +109,105 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                             ui.with_layout(
                                 egui::Layout::right_to_left(egui::Align::Center),
                                 |ui| {
-                                    ui.label(format!(
-                                        "{}/{}",
-                                        p.quantidade_atual, p.estoque_minimo
-                                    ));
+                                    ui.label(
+                                        egui::RichText::new(format!(
+                                            "{}/{}",
+                                            p.quantidade_atual, p.estoque_minimo
+                                        ))
+                                        .color(Cores::VERMELHO),
+                                    );
                                 },
                             );
                         });
-                        ui.separator();
+                        let ratio = if p.estoque_minimo > 0 {
+                            (p.quantidade_atual as f32 / p.estoque_minimo as f32).min(1.0)
+                        } else {
+                            1.0
+                        };
+                        ui.add(
+                            egui::ProgressBar::new(ratio)
+                                .fill(Cores::LARANJA)
+                                .desired_width(f32::INFINITY),
+                        );
+                        ui.add_space(4.0);
                     }
                 });
         }
 
+        // Coluna central — gráfico de atividade 7 dias
         let col1 = &mut cols[1];
-        col1.label(egui::RichText::new("Movimentações Recentes").size(15.0).strong());
+        col1.label(
+            egui::RichText::new("Atividade — Últimos 7 dias")
+                .size(15.0)
+                .strong(),
+        );
         col1.separator();
         col1.add_space(4.0);
 
+        let dados = app.dashboard_state.movimentos_7dias.clone();
+        if dados.is_empty() {
+            col1.label("Nenhuma movimentação nos últimos 7 dias.");
+        } else {
+            let mut entradas: Vec<Bar> = Vec::new();
+            let mut saidas: Vec<Bar> = Vec::new();
+            for (i, (_dia, ent, sai)) in dados.iter().enumerate() {
+                entradas.push(
+                    Bar::new(i as f64 * 2.0, *ent as f64)
+                        .width(0.8)
+                        .fill(Cores::VERDE),
+                );
+                saidas.push(
+                    Bar::new(i as f64 * 2.0 + 0.9, *sai as f64)
+                        .width(0.8)
+                        .fill(Cores::VERMELHO),
+                );
+            }
+            let chart_e = BarChart::new(entradas).name("Entradas");
+            let chart_s = BarChart::new(saidas).name("Saídas");
+
+            let labels: Vec<(f64, String)> = dados
+                .iter()
+                .enumerate()
+                .map(|(i, (dia, _, _))| (i as f64 * 2.0 + 0.45, dia.clone()))
+                .collect();
+
+            Plot::new("dash_7dias")
+                .height(240.0)
+                .allow_zoom(false)
+                .allow_drag(false)
+                .allow_scroll(false)
+                .show_axes([false, true])
+                .x_axis_formatter(move |mark, _range| {
+                    let x = mark.value;
+                    labels
+                        .iter()
+                        .min_by(|a, b| {
+                            (a.0 - x).abs().partial_cmp(&(b.0 - x).abs()).unwrap()
+                        })
+                        .map(|(_, s)| s.clone())
+                        .unwrap_or_default()
+                })
+                .show(col1, |plot_ui| {
+                    plot_ui.bar_chart(chart_e);
+                    plot_ui.bar_chart(chart_s);
+                });
+        }
+
+        // Coluna direita — movimentações recentes
+        let col2 = &mut cols[2];
+        col2.label(
+            egui::RichText::new("Movimentações Recentes").size(15.0).strong(),
+        );
+        col2.separator();
+        col2.add_space(4.0);
+
         if app.dashboard_state.movimentacoes_recentes.is_empty() {
-            col1.label("Nenhuma movimentação registrada.");
+            col2.label("Nenhuma movimentação registrada.");
         } else {
             egui::ScrollArea::vertical()
                 .id_salt("dash_mov_scroll")
-                .max_height(300.0)
-                .show(col1, |ui| {
+                .max_height(280.0)
+                .show(col2, |ui| {
                     for m in &app.dashboard_state.movimentacoes_recentes {
                         ui.horizontal(|ui| {
                             let cor = match m.tipo {
@@ -133,6 +223,13 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                                 },
                             );
                         });
+                        ui.label(
+                            egui::RichText::new(
+                                m.data_hora.format("%d/%m %H:%M").to_string(),
+                            )
+                            .size(11.0)
+                            .color(egui::Color32::from_rgb(140, 150, 165)),
+                        );
                         ui.separator();
                     }
                 });
@@ -141,8 +238,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
 }
 
 fn carregar(app: &mut App) {
-    app.dashboard_state.total_produtos =
-        produto::contar(&app.conn).unwrap_or(0);
+    app.dashboard_state.total_produtos = produto::contar(&app.conn).unwrap_or(0);
     app.dashboard_state.total_categorias = app
         .conn
         .query_row("SELECT COUNT(*) FROM categorias", [], |r| r.get(0))
@@ -153,5 +249,9 @@ fn carregar(app: &mut App) {
         movimentacao::listar_recentes(&app.conn, 10).unwrap_or_default();
     app.dashboard_state.movimentacoes_hoje =
         movimentacao::contar_hoje(&app.conn).unwrap_or(0);
+    app.dashboard_state.valor_total_estoque =
+        produto::valor_total_estoque(&app.conn).unwrap_or(0.0);
+    app.dashboard_state.movimentos_7dias =
+        movimentacao::listar_por_dia(&app.conn, 7).unwrap_or_default();
     app.dashboard_state.carregado = true;
 }

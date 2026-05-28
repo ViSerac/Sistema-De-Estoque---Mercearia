@@ -71,6 +71,7 @@ pub fn registrar_entrada(
     quantidade: i64,
     motivo: &str,
     usuario_id: i64,
+    usuario_nome: &str,
 ) -> Result<(), ErroEstoque> {
     if quantidade <= 0 {
         return Err(ErroEstoque::QuantidadeZero);
@@ -88,7 +89,7 @@ pub fn registrar_entrada(
         produto_id,
         produto_nome: p.nome,
         usuario_id,
-        usuario_nome: String::new(),
+        usuario_nome: usuario_nome.to_string(),
     };
     movimentacao::inserir(conn, &mov)?;
     Ok(())
@@ -100,6 +101,7 @@ pub fn registrar_saida(
     quantidade: i64,
     motivo: &str,
     usuario_id: i64,
+    usuario_nome: &str,
 ) -> Result<(), ErroEstoque> {
     if quantidade <= 0 {
         return Err(ErroEstoque::QuantidadeZero);
@@ -122,7 +124,7 @@ pub fn registrar_saida(
         produto_id,
         produto_nome: p.nome,
         usuario_id,
-        usuario_nome: String::new(),
+        usuario_nome: usuario_nome.to_string(),
     };
     movimentacao::inserir(conn, &mov)?;
     Ok(())

@@ -7,7 +7,7 @@ mod util;
 fn main() -> eframe::Result<()> {
     let native_options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_title("Mercearia — Gestão de Estoque")
+            .with_title("Bom Preço — Gestão de Estoque")
             .with_inner_size([1100.0, 720.0])
             .with_min_inner_size([800.0, 600.0]),
         ..Default::default()
@@ -20,6 +20,7 @@ fn main() -> eframe::Result<()> {
             let conn = repository::db::conectar().expect("Falha ao conectar ao banco de dados");
             repository::db::seed_admin(&conn).expect("Falha ao criar usuário administrador");
             repository::db::seed_demo(&conn).expect("Falha ao popular dados de exemplo");
+            repository::db::seed_estoque_baixo(&conn).expect("Falha ao popular estoque baixo");
             Ok(Box::new(ui::App::new(cc, conn)))
         }),
     )

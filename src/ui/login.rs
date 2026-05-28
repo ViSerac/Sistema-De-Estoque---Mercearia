@@ -27,7 +27,7 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
                     .show(ui, |ui| {
                         ui.vertical_centered(|ui| {
                             ui.label(
-                                egui::RichText::new("MERCEARIA")
+                                egui::RichText::new("BOM PREÇO")
                                     .color(Color32::WHITE)
                                     .size(28.0)
                                     .strong(),

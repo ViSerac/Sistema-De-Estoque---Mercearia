@@ -1,6 +1,6 @@
 use egui_extras::{Column, TableBuilder};
 
-use crate::domain::{Movimentacao, PerfilUsuario, Produto, TipoMovimentacao};
+use crate::domain::{Movimentacao, Produto, TipoMovimentacao};
 use crate::repository::{movimentacao, produto};
 use crate::service::estoque;
 
@@ -48,12 +48,6 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
 
     secao_heading(ui, "Movimentações de Estoque");
 
-    let eh_dona = app
-        .usuario_atual
-        .as_ref()
-        .map(|u| u.perfil == PerfilUsuario::Dona)
-        .unwrap_or(false);
-
     ui.horizontal(|ui| {
         let modo = app.movimentacoes_state.modo;
         if ui
@@ -69,13 +63,9 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             app.movimentacoes_state.modo = ModoMovimentacao::RegistrarEntrada;
             app.movimentacoes_state.erro_form = None;
         }
-        if eh_dona
-            && ui
-                .selectable_label(
-                    modo == ModoMovimentacao::RegistrarSaida,
-                    "Registrar Saída",
-                )
-                .clicked()
+        if ui
+            .selectable_label(modo == ModoMovimentacao::RegistrarSaida, "Registrar Saída")
+            .clicked()
         {
             app.movimentacoes_state.modo = ModoMovimentacao::RegistrarSaida;
             app.movimentacoes_state.erro_form = None;
@@ -238,14 +228,30 @@ fn registrar(app: &mut App, tipo: TipoMovimentacao) {
     };
     let motivo = app.movimentacoes_state.motivo_form.trim().to_string();
     let usuario_id = app.usuario_atual.as_ref().map(|u| u.id).unwrap_or(0);
+    let usuario_nome = app
+        .usuario_atual
+        .as_ref()
+        .map(|u| u.nome.as_str())
+        .unwrap_or("")
+        .to_string();
 
     let resultado = match tipo {
-        TipoMovimentacao::Entrada => {
-            estoque::registrar_entrada(&app.conn, produto_id, quantidade, &motivo, usuario_id)
-        }
-        TipoMovimentacao::Saida => {
-            estoque::registrar_saida(&app.conn, produto_id, quantidade, &motivo, usuario_id)
-        }
+        TipoMovimentacao::Entrada => estoque::registrar_entrada(
+            &app.conn,
+            produto_id,
+            quantidade,
+            &motivo,
+            usuario_id,
+            &usuario_nome,
+        ),
+        TipoMovimentacao::Saida => estoque::registrar_saida(
+            &app.conn,
+            produto_id,
+            quantidade,
+            &motivo,
+            usuario_id,
+            &usuario_nome,
+        ),
     };
 
     match resultado {

@@ -6,6 +6,7 @@ pub mod movimentacoes;
 pub mod produtos;
 pub mod relatorios;
 pub mod theme;
+pub mod usuarios;
 
 use egui::{Color32, CornerRadius, Frame, Layout, Margin};
 
@@ -19,6 +20,7 @@ use self::movimentacoes::MovimentacoesState;
 use self::produtos::ProdutosState;
 use self::relatorios::RelatoriosState;
 use self::theme::{apply_theme, Cores};
+use self::usuarios::UsuariosState;
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum Tela {
@@ -28,6 +30,7 @@ pub enum Tela {
     Categorias,
     Movimentacoes,
     Relatorios,
+    Usuarios,
 }
 
 pub struct App {
@@ -41,6 +44,7 @@ pub struct App {
     pub categorias_state: CategoriasState,
     pub movimentacoes_state: MovimentacoesState,
     pub relatorios_state: RelatoriosState,
+    pub usuarios_state: UsuariosState,
 
     pub feedback: Option<(String, bool)>,
     pub feedback_timer: f32,
@@ -58,6 +62,7 @@ impl App {
             categorias_state: CategoriasState::default(),
             movimentacoes_state: MovimentacoesState::default(),
             relatorios_state: RelatoriosState::default(),
+            usuarios_state: UsuariosState::default(),
             feedback: None,
             feedback_timer: 0.0,
         }
@@ -74,6 +79,7 @@ impl App {
                 self.relatorios_state.carregado_estoque = false;
                 self.relatorios_state.carregado_mensal = false;
             }
+            Tela::Usuarios => self.usuarios_state.carregado = false,
             Tela::Login => {}
         }
     }
@@ -100,7 +106,7 @@ impl App {
                 ui.add_space(16.0);
                 ui.vertical_centered(|ui| {
                     ui.label(
-                        egui::RichText::new("MERCEARIA")
+                        egui::RichText::new("BOM PREÇO")
                             .size(18.0)
                             .strong()
                             .color(Color32::WHITE),
@@ -133,6 +139,10 @@ impl App {
                     if selectable_nav(ui, "  Relatórios", selected).clicked() {
                         self.on_navigate(Tela::Relatorios);
                     }
+                    let selected = self.tela_atual == Tela::Usuarios;
+                    if selectable_nav(ui, "  Usuários", selected).clicked() {
+                        self.on_navigate(Tela::Usuarios);
+                    }
                 }
 
                 ui.with_layout(Layout::bottom_up(egui::Align::LEFT), |ui| {
@@ -141,28 +151,37 @@ impl App {
                     ui.add_space(8.0);
 
                     if let Some(u) = &self.usuario_atual.clone() {
-                        if ui
-                            .add(
-                                egui::Button::new(
-                                    egui::RichText::new("Sair").color(Color32::WHITE),
+                        ui.horizontal(|ui| {
+                            ui.add_space(10.0);
+                            if ui
+                                .add(
+                                    egui::Button::new(
+                                        egui::RichText::new("Sair").color(Color32::WHITE),
+                                    )
+                                    .fill(Color32::from_rgb(80, 40, 40))
+                                    .min_size(egui::vec2(155.0, 28.0)),
                                 )
-                                .fill(Color32::from_rgb(80, 40, 40))
-                                .min_size(egui::vec2(160.0, 28.0)),
-                            )
-                            .clicked()
-                        {
-                            self.usuario_atual = None;
-                            self.tela_atual = Tela::Login;
-                        }
+                                .clicked()
+                            {
+                                self.usuario_atual = None;
+                                self.tela_atual = Tela::Login;
+                            }
+                        });
                         ui.add_space(4.0);
-                        ui.label(
-                            egui::RichText::new(u.perfil.as_str())
-                                .size(11.0)
-                                .color(Color32::from_rgb(150, 175, 210)),
-                        );
-                        ui.label(
-                            egui::RichText::new(&u.nome).size(13.0).color(Color32::WHITE),
-                        );
+                        ui.horizontal(|ui| {
+                            ui.add_space(10.0);
+                            ui.label(
+                                egui::RichText::new(u.perfil.as_str())
+                                    .size(11.0)
+                                    .color(Color32::from_rgb(150, 175, 210)),
+                            );
+                        });
+                        ui.horizontal(|ui| {
+                            ui.add_space(10.0);
+                            ui.label(
+                                egui::RichText::new(&u.nome).size(13.0).color(Color32::WHITE),
+                            );
+                        });
                     }
                 });
             });
@@ -227,6 +246,7 @@ impl eframe::App for App {
                 Tela::Categorias => categorias::show(self, ui, ctx),
                 Tela::Movimentacoes => movimentacoes::show(self, ui),
                 Tela::Relatorios => relatorios::show(self, ui),
+                Tela::Usuarios => usuarios::show(self, ui),
                 Tela::Login => {}
             });
     }

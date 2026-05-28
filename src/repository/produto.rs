@@ -120,3 +120,11 @@ pub fn atualizar_quantidade(
 pub fn contar(conn: &Connection) -> Result<i64, rusqlite::Error> {
     conn.query_row("SELECT COUNT(*) FROM produtos", [], |row| row.get(0))
 }
+
+pub fn valor_total_estoque(conn: &Connection) -> Result<f64, rusqlite::Error> {
+    conn.query_row(
+        "SELECT COALESCE(SUM(quantidade_atual * preco_custo), 0.0) FROM produtos",
+        [],
+        |row| row.get(0),
+    )
+}

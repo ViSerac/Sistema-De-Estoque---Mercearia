@@ -30,6 +30,7 @@ pub struct ProdutosState {
     pub produtos: Vec<Produto>,
     pub categorias: Vec<Categoria>,
     pub filtro: String,
+    pub filtro_categoria_id: i64,
     pub modo: ModoProdutos,
     pub form: ProdutoForm,
     pub selecionado_id: Option<i64>,
@@ -44,6 +45,7 @@ impl Default for ProdutosState {
             produtos: Vec::new(),
             categorias: Vec::new(),
             filtro: String::new(),
+            filtro_categoria_id: 0,
             modo: ModoProdutos::Lista,
             form: ProdutoForm::default(),
             selecionado_id: None,
@@ -103,24 +105,54 @@ fn show_lista(app: &mut App, ui: &mut egui::Ui, ctx: &egui::Context) {
         ui.label("Buscar:");
         ui.add(
             egui::TextEdit::singleline(&mut app.produtos_state.filtro)
-                .desired_width(260.0)
+                .desired_width(220.0)
                 .hint_text("Nome ou código de barras"),
         );
         if ui.small_button("✕").clicked() {
             app.produtos_state.filtro.clear();
         }
+        ui.add_space(12.0);
+        ui.label("Categoria:");
+        let cats = app.produtos_state.categorias.clone();
+        let cat_label = if app.produtos_state.filtro_categoria_id == 0 {
+            "Todas".to_string()
+        } else {
+            cats.iter()
+                .find(|c| c.id == app.produtos_state.filtro_categoria_id)
+                .map(|c| c.nome.clone())
+                .unwrap_or_else(|| "Todas".to_string())
+        };
+        egui::ComboBox::from_id_salt("cat_filter")
+            .selected_text(cat_label)
+            .width(160.0)
+            .show_ui(ui, |ui| {
+                ui.selectable_value(&mut app.produtos_state.filtro_categoria_id, 0, "Todas");
+                for c in &cats {
+                    ui.selectable_value(
+                        &mut app.produtos_state.filtro_categoria_id,
+                        c.id,
+                        &c.nome,
+                    );
+                }
+            });
+        if app.produtos_state.filtro_categoria_id != 0 && ui.small_button("✕").clicked() {
+            app.produtos_state.filtro_categoria_id = 0;
+        }
     });
     ui.add_space(8.0);
 
     let filtro = app.produtos_state.filtro.to_lowercase();
+    let cat_id = app.produtos_state.filtro_categoria_id;
     let produtos: Vec<Produto> = app
         .produtos_state
         .produtos
         .iter()
         .filter(|p| {
-            filtro.is_empty()
+            let texto_ok = filtro.is_empty()
                 || p.nome.to_lowercase().contains(&filtro)
-                || p.codigo_de_barras.contains(&filtro)
+                || p.codigo_de_barras.contains(&filtro);
+            let cat_ok = cat_id == 0 || p.categoria_id == cat_id;
+            texto_ok && cat_ok
         })
         .cloned()
         .collect();

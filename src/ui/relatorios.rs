@@ -1,5 +1,6 @@
 use chrono::Datelike;
 use egui_extras::{Column, TableBuilder};
+use egui_plot::{Bar, BarChart, Plot};
 
 use crate::domain::{Movimentacao, Produto, TipoMovimentacao};
 use crate::repository::{movimentacao, produto};
@@ -17,6 +18,7 @@ pub enum AbaRelatorio {
 pub struct RelatoriosState {
     pub estoque_baixo: Vec<Produto>,
     pub movimentacoes_mes: Vec<Movimentacao>,
+    pub movimentos_por_dia: Vec<(String, i64, i64)>,
     pub ano: i32,
     pub mes: u32,
     pub aba: AbaRelatorio,
@@ -30,6 +32,7 @@ impl Default for RelatoriosState {
         Self {
             estoque_baixo: Vec::new(),
             movimentacoes_mes: Vec::new(),
+            movimentos_por_dia: Vec::new(),
             ano: now.year(),
             mes: now.month(),
             aba: AbaRelatorio::EstoqueBaixo,
@@ -82,6 +85,53 @@ fn show_estoque_baixo(app: &mut App, ui: &mut egui::Ui) {
     );
     ui.add_space(8.0);
 
+    // Gráfico de déficit horizontal
+    ui.label(egui::RichText::new("Déficit por Produto").size(13.0).strong());
+    ui.add_space(4.0);
+
+    let produtos_graf = app.relatorios_state.estoque_baixo.clone();
+    let bars: Vec<Bar> = produtos_graf
+        .iter()
+        .enumerate()
+        .map(|(i, p)| {
+            let deficit = (p.estoque_minimo - p.quantidade_atual).max(0) as f64;
+            Bar::new(i as f64, deficit)
+                .name(p.nome.clone())
+                .fill(Cores::LARANJA)
+                .width(0.7)
+        })
+        .collect();
+
+    let nomes: Vec<(f64, String)> = produtos_graf
+        .iter()
+        .enumerate()
+        .map(|(i, p)| {
+            let nome = if p.nome.len() > 16 {
+                format!("{}…", &p.nome[..14])
+            } else {
+                p.nome.clone()
+            };
+            (i as f64, nome)
+        })
+        .collect();
+
+    Plot::new("deficit_chart")
+        .height(180.0)
+        .allow_zoom(false)
+        .allow_drag(false)
+        .allow_scroll(false)
+        .show_axes([true, true])
+        .x_axis_formatter(move |mark, _range| {
+            let x = mark.value.round() as usize;
+            nomes.get(x).map(|(_, s)| s.clone()).unwrap_or_default()
+        })
+        .show(ui, |plot_ui| {
+            plot_ui.bar_chart(BarChart::new(bars));
+        });
+
+    ui.add_space(12.0);
+
+    // Tabela detalhada
     egui::ScrollArea::vertical()
         .id_salt("rel_baixo_scroll")
         .show(ui, |ui| {
@@ -149,6 +199,12 @@ fn show_mensal(app: &mut App, ui: &mut egui::Ui) {
                 app.relatorios_state.mes,
             )
             .unwrap_or_default();
+            app.relatorios_state.movimentos_por_dia = movimentacao::listar_por_dia_mes(
+                &app.conn,
+                app.relatorios_state.ano,
+                app.relatorios_state.mes,
+            )
+            .unwrap_or_default();
             app.relatorios_state.carregado_mensal = true;
         }
     });
@@ -181,6 +237,56 @@ fn show_mensal(app: &mut App, ui: &mut egui::Ui) {
     if movs.is_empty() {
         ui.label("Nenhuma movimentação neste período.");
         return;
+    }
+
+    // Gráfico de entradas vs saídas por dia
+    let dados_dia = app.relatorios_state.movimentos_por_dia.clone();
+    if !dados_dia.is_empty() {
+        ui.label(egui::RichText::new("Entradas vs Saídas por Dia").size(13.0).strong());
+        ui.add_space(4.0);
+
+        let mut barras_e: Vec<Bar> = Vec::new();
+        let mut barras_s: Vec<Bar> = Vec::new();
+        let labels_dia: Vec<(f64, String)> = dados_dia
+            .iter()
+            .enumerate()
+            .map(|(i, (dia, _, _))| (i as f64 * 2.0 + 0.45, dia.clone()))
+            .collect();
+
+        for (i, (_dia, ent, sai)) in dados_dia.iter().enumerate() {
+            barras_e.push(
+                Bar::new(i as f64 * 2.0, *ent as f64)
+                    .width(0.85)
+                    .fill(Cores::VERDE),
+            );
+            barras_s.push(
+                Bar::new(i as f64 * 2.0 + 0.95, *sai as f64)
+                    .width(0.85)
+                    .fill(Cores::VERMELHO),
+            );
+        }
+
+        Plot::new("mensal_chart")
+            .height(180.0)
+            .allow_zoom(false)
+            .allow_drag(false)
+            .allow_scroll(false)
+            .show_axes([false, true])
+            .x_axis_formatter(move |mark, _range| {
+                let x = mark.value;
+                labels_dia
+                    .iter()
+                    .min_by(|a, b| {
+                        (a.0 - x).abs().partial_cmp(&(b.0 - x).abs()).unwrap()
+                    })
+                    .map(|(_, s)| format!("dia {}", s))
+                    .unwrap_or_default()
+            })
+            .show(ui, |plot_ui| {
+                plot_ui.bar_chart(BarChart::new(barras_e).name("Entradas"));
+                plot_ui.bar_chart(BarChart::new(barras_s).name("Saídas"));
+            });
+        ui.add_space(8.0);
     }
 
     egui::ScrollArea::vertical()

@@ -277,6 +277,43 @@ pub fn seed_demo(conn: &Connection) -> Result<(), rusqlite::Error> {
     Ok(())
 }
 
+pub fn seed_estoque_baixo(conn: &Connection) -> Result<(), rusqlite::Error> {
+    // Só roda se o banco está sem movimentações (primeira execução)
+    let count: i64 =
+        conn.query_row("SELECT COUNT(*) FROM movimentacoes", [], |r| r.get(0))?;
+    if count > 0 {
+        return Ok(());
+    }
+
+    // Atualiza quantidade_atual para abaixo do mínimo em produtos selecionados
+    let atualizacoes: &[(&str, i64)] = &[
+        ("Queijo Prato kg", 3),
+        ("Presunto Fatiado 200g", 4),
+        ("Leite Condensado 395g", 8),
+        ("Iogurte Natural 170g", 6),
+        ("Sabão em Pó 1kg", 2),
+        ("Amaciante 2L", 3),
+        ("Detergente 500ml", 5),
+        ("Frango Inteiro kg", 6),
+        ("Carne Moída kg", 4),
+        ("Cerveja Lata 350ml", 12),
+        ("Refrigerante 2L", 7),
+        ("Arroz Branco 5kg", 5),
+        ("Feijão Carioca 1kg", 6),
+        ("Papel Higiênico 12un", 4),
+        ("Shampoo 400ml", 3),
+    ];
+
+    for (nome, nova_qtd) in atualizacoes {
+        conn.execute(
+            "UPDATE produtos SET quantidade_atual = ?1 WHERE nome = ?2 AND quantidade_atual >= estoque_minimo",
+            rusqlite::params![nova_qtd, nome],
+        )?;
+    }
+
+    Ok(())
+}
+
 pub fn seed_admin(conn: &Connection) -> Result<(), rusqlite::Error> {
     let count: i64 = conn.query_row(
         "SELECT COUNT(*) FROM usuarios WHERE perfil = 'Dona'",
