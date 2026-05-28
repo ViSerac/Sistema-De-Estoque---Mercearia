@@ -277,7 +277,9 @@ fn show_mensal(app: &mut App, ui: &mut egui::Ui) {
                 labels_dia
                     .iter()
                     .min_by(|a, b| {
-                        (a.0 - x).abs().partial_cmp(&(b.0 - x).abs()).unwrap()
+                        let da = (a.0 - x).abs();
+                        let db = (b.0 - x).abs();
+                        da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
                     })
                     .map(|(_, s)| format!("dia {}", s))
                     .unwrap_or_default()
