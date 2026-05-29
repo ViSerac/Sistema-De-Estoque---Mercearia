@@ -21,6 +21,7 @@ fn main() -> eframe::Result<()> {
             repository::db::seed_admin(&conn).expect("Falha ao criar usuário administrador");
             repository::db::seed_demo(&conn).expect("Falha ao popular dados de exemplo");
             repository::db::seed_estoque_baixo(&conn).expect("Falha ao popular estoque baixo");
+            repository::db::seed_movimentacoes(&conn).expect("Falha ao popular movimentações de exemplo");
             Ok(Box::new(ui::App::new(cc, conn)))
         }),
     )

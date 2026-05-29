@@ -20,6 +20,7 @@ pub struct MovimentacoesState {
     pub produtos: Vec<Produto>,
     pub modo: ModoMovimentacao,
     pub produto_id_form: i64,
+    pub filtro_produto_form: String,
     pub quantidade_form: String,
     pub motivo_form: String,
     pub erro_form: Option<String>,
@@ -33,6 +34,7 @@ impl Default for MovimentacoesState {
             produtos: Vec::new(),
             modo: ModoMovimentacao::Historico,
             produto_id_form: 0,
+            filtro_produto_form: String::new(),
             quantidade_form: String::new(),
             motivo_form: String::new(),
             erro_form: None,
@@ -62,6 +64,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         {
             app.movimentacoes_state.modo = ModoMovimentacao::RegistrarEntrada;
             app.movimentacoes_state.erro_form = None;
+            app.movimentacoes_state.filtro_produto_form.clear();
         }
         if ui
             .selectable_label(modo == ModoMovimentacao::RegistrarSaida, "Registrar Saída")
@@ -69,6 +72,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         {
             app.movimentacoes_state.modo = ModoMovimentacao::RegistrarSaida;
             app.movimentacoes_state.erro_form = None;
+            app.movimentacoes_state.filtro_produto_form.clear();
         }
     });
     ui.separator();
@@ -93,12 +97,12 @@ fn show_historico(app: &mut App, ui: &mut egui::Ui) {
             TableBuilder::new(ui)
                 .resizable(true)
                 .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-                .column(Column::initial(130.0))
-                .column(Column::initial(70.0))
-                .column(Column::remainder().at_least(140.0))
+                .column(Column::initial(110.0))
                 .column(Column::initial(60.0))
-                .column(Column::initial(160.0))
-                .column(Column::initial(120.0))
+                .column(Column::initial(180.0))
+                .column(Column::initial(50.0))
+                .column(Column::remainder().at_least(80.0))
+                .column(Column::initial(100.0))
                 .header(28.0, |mut h| {
                     h.col(|ui| { ui.strong("Data/Hora"); });
                     h.col(|ui| { ui.strong("Tipo"); });
@@ -157,18 +161,36 @@ fn show_form(app: &mut App, ui: &mut egui::Ui, tipo: TipoMovimentacao) {
                         .map(|p| format!("{} ({} un.)", p.nome, p.quantidade_atual))
                         .unwrap_or_else(|| "Selecione...".into());
 
+                    let filtro = app.movimentacoes_state.filtro_produto_form.to_lowercase();
                     egui::ComboBox::from_id_salt("prod_sel_mov")
                         .selected_text(sel_nome)
                         .width(320.0)
                         .show_ui(ui, |ui| {
+                            ui.add(
+                                egui::TextEdit::singleline(
+                                    &mut app.movimentacoes_state.filtro_produto_form,
+                                )
+                                .hint_text("Filtrar produto...")
+                                .desired_width(296.0),
+                            );
+                            ui.separator();
                             for p in &prods {
-                                let label =
-                                    format!("{} ({} un.)", p.nome, p.quantidade_atual);
-                                ui.selectable_value(
-                                    &mut app.movimentacoes_state.produto_id_form,
-                                    p.id,
-                                    label,
-                                );
+                                if filtro.is_empty()
+                                    || p.nome.to_lowercase().contains(&filtro)
+                                {
+                                    let label =
+                                        format!("{} ({} un.)", p.nome, p.quantidade_atual);
+                                    if ui
+                                        .selectable_value(
+                                            &mut app.movimentacoes_state.produto_id_form,
+                                            p.id,
+                                            label,
+                                        )
+                                        .clicked()
+                                    {
+                                        app.movimentacoes_state.filtro_produto_form.clear();
+                                    }
+                                }
                             }
                         });
                     ui.end_row();
@@ -260,6 +282,7 @@ fn registrar(app: &mut App, tipo: TipoMovimentacao) {
             app.movimentacoes_state.quantidade_form.clear();
             app.movimentacoes_state.motivo_form.clear();
             app.movimentacoes_state.produto_id_form = 0;
+            app.movimentacoes_state.filtro_produto_form.clear();
             app.movimentacoes_state.erro_form = None;
             app.movimentacoes_state.modo = ModoMovimentacao::Historico;
             recarregar(app);

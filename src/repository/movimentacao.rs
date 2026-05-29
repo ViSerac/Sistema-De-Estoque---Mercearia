@@ -78,47 +78,65 @@ pub fn listar_por_mes(
     rows.collect()
 }
 
-/// Retorna (dia "dd/mm", entradas, saidas) para os últimos `dias` dias.
+/// Retorna (dia "dd/mm", entradas_un, saidas_un, lucro_R$) para os últimos `dias` dias.
 pub fn listar_por_dia(
     conn: &Connection,
     dias: u32,
-) -> Result<Vec<(String, i64, i64)>, rusqlite::Error> {
+) -> Result<Vec<(String, i64, i64, f64)>, rusqlite::Error> {
     let sql = format!(
-        "SELECT strftime('%d/%m', data_hora),
-                SUM(CASE WHEN tipo='Entrada' THEN 1 ELSE 0 END),
-                SUM(CASE WHEN tipo='Saida'   THEN 1 ELSE 0 END)
-         FROM movimentacoes
-         WHERE data_hora >= datetime('now', '-{} days')
-         GROUP BY strftime('%Y-%m-%d', data_hora)
-         ORDER BY strftime('%Y-%m-%d', data_hora)",
+        "SELECT strftime('%d/%m', m.data_hora),
+                SUM(CASE WHEN m.tipo='Entrada' THEN m.quantidade ELSE 0 END),
+                SUM(CASE WHEN m.tipo='Saida'   THEN m.quantidade ELSE 0 END),
+                SUM(CASE WHEN m.tipo='Saida'
+                         THEN (p.preco_de_venda - p.preco_custo) * CAST(m.quantidade AS REAL)
+                         ELSE 0.0 END)
+         FROM movimentacoes m
+         JOIN produtos p ON m.produto_id = p.id
+         WHERE m.data_hora >= datetime('now', '-{} days')
+         GROUP BY strftime('%Y-%m-%d', m.data_hora)
+         ORDER BY strftime('%Y-%m-%d', m.data_hora)",
         dias
     );
     let mut stmt = conn.prepare(&sql)?;
     let rows = stmt.query_map([], |row| {
-        Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?, row.get::<_, i64>(2)?))
+        Ok((
+            row.get::<_, String>(0)?,
+            row.get::<_, i64>(1)?,
+            row.get::<_, i64>(2)?,
+            row.get::<_, f64>(3)?,
+        ))
     })?;
     rows.collect()
 }
 
-/// Retorna (dia "dd", entradas, saidas) para um mês/ano específico.
+/// Retorna (dia "dd", entradas_un, saidas_un, lucro_R$) para um mês/ano específico.
 pub fn listar_por_dia_mes(
     conn: &Connection,
     ano: i32,
     mes: u32,
-) -> Result<Vec<(String, i64, i64)>, rusqlite::Error> {
+) -> Result<Vec<(String, i64, i64, f64)>, rusqlite::Error> {
     let ano_str = format!("{:04}", ano);
     let mes_str = format!("{:02}", mes);
     let mut stmt = conn.prepare(
-        "SELECT strftime('%d', data_hora),
-                SUM(CASE WHEN tipo='Entrada' THEN 1 ELSE 0 END),
-                SUM(CASE WHEN tipo='Saida'   THEN 1 ELSE 0 END)
-         FROM movimentacoes
-         WHERE strftime('%Y', data_hora) = ?1 AND strftime('%m', data_hora) = ?2
-         GROUP BY strftime('%d', data_hora)
-         ORDER BY strftime('%d', data_hora)",
+        "SELECT strftime('%d', m.data_hora),
+                SUM(CASE WHEN m.tipo='Entrada' THEN m.quantidade ELSE 0 END),
+                SUM(CASE WHEN m.tipo='Saida'   THEN m.quantidade ELSE 0 END),
+                SUM(CASE WHEN m.tipo='Saida'
+                         THEN (p.preco_de_venda - p.preco_custo) * CAST(m.quantidade AS REAL)
+                         ELSE 0.0 END)
+         FROM movimentacoes m
+         JOIN produtos p ON m.produto_id = p.id
+         WHERE strftime('%Y', m.data_hora) = ?1 AND strftime('%m', m.data_hora) = ?2
+         GROUP BY strftime('%d', m.data_hora)
+         ORDER BY strftime('%d', m.data_hora)",
     )?;
     let rows = stmt.query_map(rusqlite::params![ano_str, mes_str], |row| {
-        Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?, row.get::<_, i64>(2)?))
+        Ok((
+            row.get::<_, String>(0)?,
+            row.get::<_, i64>(1)?,
+            row.get::<_, i64>(2)?,
+            row.get::<_, f64>(3)?,
+        ))
     })?;
     rows.collect()
 }

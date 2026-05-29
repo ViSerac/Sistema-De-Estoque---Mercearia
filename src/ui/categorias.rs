@@ -1,3 +1,5 @@
+use egui_extras::{Column, TableBuilder};
+
 use crate::domain::{Categoria, PerfilUsuario};
 use crate::repository::categoria;
 
@@ -75,39 +77,50 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, ctx: &egui::Context) {
     if app.categorias_state.categorias.is_empty() {
         ui.label("Nenhuma categoria cadastrada.");
     } else {
+        let cats = app.categorias_state.categorias.clone();
+        let mut editar: Option<Categoria> = None;
+        let mut deletar: Option<i64> = None;
+
         egui::ScrollArea::vertical()
             .id_salt("cat_scroll")
             .show(ui, |ui| {
-                let cats = app.categorias_state.categorias.clone();
-                for cat in &cats {
-                    ui.horizontal(|ui| {
-                        ui.label(&cat.nome);
-                        ui.with_layout(
-                            egui::Layout::right_to_left(egui::Align::Center),
-                            |ui| {
-                                if eh_dona
-                                    && ui
-                                        .add(
-                                            egui::Button::new("Excluir")
-                                                .fill(Cores::VERMELHO)
-                                                .small(),
-                                        )
-                                        .clicked()
-                                {
-                                    app.categorias_state.confirmar_delete_id = Some(cat.id);
-                                    app.categorias_state.confirmando = true;
-                                }
-                                if ui.small_button("Editar").clicked() {
-                                    app.categorias_state.editando_id = Some(cat.id);
-                                    app.categorias_state.nome_form = cat.nome.clone();
-                                    app.categorias_state.erro = None;
-                                }
-                            },
-                        );
+                TableBuilder::new(ui)
+                    .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+                    .column(Column::remainder().at_least(120.0))
+                    .column(Column::initial(60.0))
+                    .column(Column::initial(65.0))
+                    .body(|mut body| {
+                        for cat in &cats {
+                            body.row(28.0, |mut row| {
+                                row.col(|ui| { ui.label(&cat.nome); });
+                                row.col(|ui| {
+                                    if ui.small_button("Editar").clicked() {
+                                        editar = Some(cat.clone());
+                                    }
+                                });
+                                row.col(|ui| {
+                                    if eh_dona
+                                        && ui
+                                            .add(egui::Button::new("Excluir").fill(Cores::VERMELHO).small())
+                                            .clicked()
+                                    {
+                                        deletar = Some(cat.id);
+                                    }
+                                });
+                            });
+                        }
                     });
-                    ui.separator();
-                }
             });
+
+        if let Some(cat) = editar {
+            app.categorias_state.editando_id = Some(cat.id);
+            app.categorias_state.nome_form = cat.nome;
+            app.categorias_state.erro = None;
+        }
+        if let Some(id) = deletar {
+            app.categorias_state.confirmar_delete_id = Some(id);
+            app.categorias_state.confirmando = true;
+        }
     }
 
     let mut confirmando = app.categorias_state.confirmando;

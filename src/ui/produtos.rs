@@ -177,7 +177,7 @@ fn show_lista(app: &mut App, ui: &mut egui::Ui, ctx: &egui::Context) {
             TableBuilder::new(ui)
                 .resizable(true)
                 .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-                .column(Column::remainder().at_least(140.0))
+                .column(Column::initial(200.0))
                 .column(Column::initial(130.0))
                 .column(Column::initial(120.0))
                 .column(Column::initial(90.0))

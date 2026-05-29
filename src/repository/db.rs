@@ -1,3 +1,4 @@
+use chrono::{Duration, Local};
 use rusqlite::Connection;
 
 pub fn conectar() -> Result<Connection, rusqlite::Error> {
@@ -309,6 +310,86 @@ pub fn seed_estoque_baixo(conn: &Connection) -> Result<(), rusqlite::Error> {
             "UPDATE produtos SET quantidade_atual = ?1 WHERE nome = ?2 AND quantidade_atual >= estoque_minimo",
             rusqlite::params![nova_qtd, nome],
         )?;
+    }
+
+    Ok(())
+}
+
+pub fn seed_movimentacoes(conn: &Connection) -> Result<(), rusqlite::Error> {
+    let count: i64 =
+        conn.query_row("SELECT COUNT(*) FROM movimentacoes", [], |r| r.get(0))?;
+    if count > 0 {
+        return Ok(());
+    }
+
+    let usuario_id: i64 = match conn.query_row(
+        "SELECT id FROM usuarios LIMIT 1",
+        [],
+        |r| r.get(0),
+    ) {
+        Ok(id) => id,
+        Err(_) => return Ok(()),
+    };
+
+    // (nome, tipo, qtd, dias_atras, hora, motivo)
+    let movs: &[(&str, &str, i64, i64, i64, &str)] = &[
+        ("Leite Integral 1L",                "Entrada", 50, 7, 8,  "Reposição semanal"),
+        ("Arroz Branco 5kg",                 "Entrada", 20, 7, 9,  "Compra fornecedor"),
+        ("Feijão Carioca 1kg",               "Saida",   8,  7, 11, "Venda"),
+        ("Pão Francês kg",                   "Saida",   3,  7, 14, "Venda do dia"),
+        ("Cerveja Pilsen Lata 350ml",        "Entrada", 48, 6, 9,  "Reposição"),
+        ("Refrigerante Cola 2L",             "Saida",   12, 6, 10, "Venda"),
+        ("Detergente Ypê 500ml",             "Entrada", 24, 6, 13, "Compra"),
+        ("Banana Prata kg",                  "Saida",   5,  6, 15, "Venda"),
+        ("Frango Inteiro Congelado kg",      "Entrada", 15, 5, 8,  "Reposição"),
+        ("Carne Moída kg",                   "Saida",   6,  5, 11, "Venda"),
+        ("Macarrão Espaguete 500g",          "Entrada", 30, 5, 10, "Compra"),
+        ("Água Mineral 500ml",               "Saida",   24, 5, 16, "Venda"),
+        ("Queijo Mussarela kg",              "Entrada", 10, 4, 8,  "Reposição"),
+        ("Sabão em Pó Omo 1kg",              "Saida",   5,  4, 12, "Venda"),
+        ("Biscoito Recheado Chocolate 140g", "Entrada", 36, 4, 9,  "Compra"),
+        ("Iogurte de Morango 170g",          "Saida",   10, 4, 14, "Venda"),
+        ("Leite Integral 1L",                "Saida",   15, 3, 9,  "Venda"),
+        ("Amaciante Comfort 1L",             "Entrada", 12, 3, 10, "Reposição"),
+        ("Batata Inglesa kg",                "Saida",   8,  3, 11, "Venda"),
+        ("Pão de Forma 500g",                "Entrada", 20, 3, 8,  "Compra"),
+        ("Refrigerante Guaraná 2L",          "Entrada", 24, 2, 9,  "Reposição"),
+        ("Ovo de Galinha Vermelho Dúzia",    "Saida",   6,  2, 10, "Venda"),
+        ("Açúcar Refinado 1kg",              "Saida",   5,  2, 14, "Venda"),
+        ("Molho de Tomate 340g",             "Entrada", 20, 2, 11, "Compra"),
+        ("Leite Desnatado 1L",               "Entrada", 30, 1, 8,  "Reposição"),
+        ("Cerveja Long Neck 355ml",          "Saida",   12, 1, 16, "Venda"),
+        ("Batata Chips Salgada 96g",         "Saida",   8,  1, 15, "Venda"),
+        ("Sabonete Dove 90g",                "Entrada", 30, 1, 9,  "Compra"),
+        ("Leite Integral 1L",                "Saida",   8,  0, 9,  "Venda"),
+        ("Pão Francês kg",                   "Entrada", 5,  0, 7,  "Entrega padaria"),
+        ("Água Mineral 500ml",               "Entrada", 48, 0, 8,  "Reposição"),
+        ("Banana Prata kg",                  "Saida",   3,  0, 10, "Venda"),
+    ];
+
+    let today = Local::now().date_naive();
+
+    for (nome, tipo, qtd, dias_atras, hora, motivo) in movs {
+        let prod_id: Option<i64> = conn
+            .query_row(
+                "SELECT id FROM produtos WHERE nome = ?1 LIMIT 1",
+                [nome],
+                |r| r.get(0),
+            )
+            .ok();
+
+        if let Some(pid) = prod_id {
+            let data = (today - Duration::days(*dias_atras))
+                .and_hms_opt(*hora as u32, 0, 0)
+                .expect("hora invalida no seed_movimentacoes");
+            let data_str = data.format("%Y-%m-%d %H:%M:%S").to_string();
+            conn.execute(
+                "INSERT INTO movimentacoes
+                 (tipo, quantidade, data_hora, motivo, produto_id, usuario_id)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                rusqlite::params![tipo, qtd, data_str, motivo, pid, usuario_id],
+            )?;
+        }
     }
 
     Ok(())

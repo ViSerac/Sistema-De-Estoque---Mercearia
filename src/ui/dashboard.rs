@@ -1,3 +1,4 @@
+use egui_extras::{Column, TableBuilder};
 use egui_plot::{Bar, BarChart, Plot};
 
 use crate::domain::{Movimentacao, Produto, TipoMovimentacao};
@@ -14,7 +15,7 @@ pub struct DashboardState {
     pub movimentacoes_recentes: Vec<Movimentacao>,
     pub movimentacoes_hoje: i64,
     pub valor_total_estoque: f64,
-    pub movimentos_7dias: Vec<(String, i64, i64)>,
+    pub movimentos_7dias: Vec<(String, i64, i64, f64)>,
     pub carregado: bool,
 }
 
@@ -81,9 +82,99 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         );
     });
 
-    ui.add_space(20.0);
+    ui.add_space(12.0);
+
+    // — Gráfico de atividade —
+    let dados = app.dashboard_state.movimentos_7dias.clone();
+    if !dados.is_empty() {
+        ui.label(
+            egui::RichText::new("Atividade — Últimos 7 dias")
+                .size(15.0)
+                .strong(),
+        );
+        ui.separator();
+        ui.add_space(4.0);
+
+        let n = dados.len();
+        let labels: Vec<String> = dados.iter().map(|(dia, _, _, _)| dia.clone()).collect();
+        let labels_fmt = labels.clone();
+
+        let mut entradas: Vec<Bar> = Vec::new();
+        let mut saidas: Vec<Bar> = Vec::new();
+        for (i, (_, ent, sai, _)) in dados.iter().enumerate() {
+            entradas.push(
+                Bar::new(i as f64 - 0.25, *ent as f64)
+                    .width(0.4)
+                    .fill(Cores::VERDE),
+            );
+            saidas.push(
+                Bar::new(i as f64 + 0.25, *sai as f64)
+                    .width(0.4)
+                    .fill(Cores::VERMELHO),
+            );
+        }
+
+        Plot::new("dash_7dias")
+            .height(220.0)
+            .allow_zoom(false)
+            .allow_drag(false)
+            .allow_scroll(false)
+            .include_y(0.0)
+            .include_x(-0.7)
+            .include_x(n as f64 - 0.3)
+            .x_axis_formatter(move |mark, _range| {
+                let i = mark.value.round() as i64;
+                if i >= 0
+                    && (i as usize) < labels_fmt.len()
+                    && (mark.value - i as f64).abs() < 0.2
+                {
+                    labels_fmt[i as usize].clone()
+                } else {
+                    String::new()
+                }
+            })
+            .show(ui, |plot_ui| {
+                plot_ui.bar_chart(BarChart::new(entradas).name("Entradas"));
+                plot_ui.bar_chart(BarChart::new(saidas).name("Saídas"));
+            });
+
+        ui.add_space(4.0);
+        TableBuilder::new(ui)
+            .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+            .column(Column::initial(70.0))
+            .column(Column::initial(110.0))
+            .column(Column::initial(100.0))
+            .column(Column::initial(120.0))
+            .header(22.0, |mut h| {
+                h.col(|ui| { ui.strong("Dia"); });
+                h.col(|ui| { ui.strong("Entradas"); });
+                h.col(|ui| { ui.strong("Saídas"); });
+                h.col(|ui| { ui.strong("Lucro"); });
+            })
+            .body(|mut body| {
+                for (dia, ent, sai, lucro) in &dados {
+                    body.row(20.0, |mut row| {
+                        row.col(|ui| { ui.label(dia); });
+                        row.col(|ui| {
+                            ui.colored_label(Cores::VERDE, format!("{} un.", ent));
+                        });
+                        row.col(|ui| {
+                            ui.colored_label(Cores::VERMELHO, format!("{} un.", sai));
+                        });
+                        row.col(|ui| {
+                            ui.colored_label(
+                                egui::Color32::from_rgb(40, 80, 140),
+                                format!("R$ {:.2}", lucro),
+                            );
+                        });
+                    });
+                }
+            });
+        ui.add_space(12.0);
+    }
 
     // — Duas colunas: Estoque Baixo | Movimentações Recentes —
+    let painel_altura = (ui.available_height() - 40.0).max(100.0);
     ui.columns(2, |cols| {
         let col0 = &mut cols[0];
         col0.label(
@@ -100,7 +191,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         } else {
             egui::ScrollArea::vertical()
                 .id_salt("dash_estoque_scroll")
-                .max_height(220.0)
+                .max_height(painel_altura)
                 .show(col0, |ui| {
                     for p in &app.dashboard_state.estoque_baixo {
                         ui.horizontal(|ui| {
@@ -138,7 +229,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         } else {
             egui::ScrollArea::vertical()
                 .id_salt("dash_mov_scroll")
-                .max_height(220.0)
+                .max_height(painel_altura)
                 .show(col1, |ui| {
                     for m in &app.dashboard_state.movimentacoes_recentes {
                         ui.horizontal(|ui| {
@@ -168,62 +259,6 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         }
     });
 
-    ui.add_space(16.0);
-
-    // — Gráfico de atividade (fora do columns) —
-    let dados = app.dashboard_state.movimentos_7dias.clone();
-    if !dados.is_empty() {
-        ui.label(
-            egui::RichText::new("Atividade — Últimos 7 dias")
-                .size(15.0)
-                .strong(),
-        );
-        ui.separator();
-        ui.add_space(4.0);
-
-        let mut entradas: Vec<Bar> = Vec::new();
-        let mut saidas: Vec<Bar> = Vec::new();
-        for (i, (_dia, ent, sai)) in dados.iter().enumerate() {
-            entradas.push(
-                Bar::new(i as f64 * 2.0, *ent as f64)
-                    .width(0.8)
-                    .fill(Cores::VERDE),
-            );
-            saidas.push(
-                Bar::new(i as f64 * 2.0 + 0.9, *sai as f64)
-                    .width(0.8)
-                    .fill(Cores::VERMELHO),
-            );
-        }
-
-        let labels: Vec<(f64, String)> = dados
-            .iter()
-            .enumerate()
-            .map(|(i, (dia, _, _))| (i as f64 * 2.0 + 0.45, dia.clone()))
-            .collect();
-
-        Plot::new("dash_7dias")
-            .height(180.0)
-            .allow_zoom(false)
-            .allow_drag(false)
-            .allow_scroll(false)
-            .x_axis_formatter(move |mark, _range| {
-                let x = mark.value;
-                labels
-                    .iter()
-                    .min_by(|a, b| {
-                        let da = (a.0 - x).abs();
-                        let db = (b.0 - x).abs();
-                        da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
-                    })
-                    .map(|(_, s)| s.clone())
-                    .unwrap_or_default()
-            })
-            .show(ui, |plot_ui| {
-                plot_ui.bar_chart(BarChart::new(entradas).name("Entradas"));
-                plot_ui.bar_chart(BarChart::new(saidas).name("Saídas"));
-            });
-    }
 }
 
 fn carregar(app: &mut App) {

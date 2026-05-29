@@ -18,7 +18,7 @@ pub enum AbaRelatorio {
 pub struct RelatoriosState {
     pub estoque_baixo: Vec<Produto>,
     pub movimentacoes_mes: Vec<Movimentacao>,
-    pub movimentos_por_dia: Vec<(String, i64, i64)>,
+    pub movimentos_por_dia: Vec<(String, i64, i64, f64)>,
     pub ano: i32,
     pub mes: u32,
     pub aba: AbaRelatorio,
@@ -227,10 +227,20 @@ fn show_mensal(app: &mut App, ui: &mut egui::Ui) {
         .map(|m| m.quantidade)
         .sum();
 
+    let lucro_total: f64 = app.relatorios_state.movimentos_por_dia
+        .iter()
+        .map(|(_, _, _, l)| l)
+        .sum();
     ui.horizontal(|ui| {
         card_estatistica(ui, "Total Entradas", &total_entradas.to_string(), Cores::VERDE);
         card_estatistica(ui, "Total Saídas", &total_saidas.to_string(), Cores::VERMELHO);
         card_estatistica(ui, "Registros", &movs.len().to_string(), Cores::AZUL_PRIMARIO);
+        card_estatistica(
+            ui,
+            "Lucro Total",
+            &format!("R$ {:.2}", lucro_total),
+            egui::Color32::from_rgb(40, 80, 140),
+        );
     });
     ui.add_space(12.0);
 
@@ -245,48 +255,80 @@ fn show_mensal(app: &mut App, ui: &mut egui::Ui) {
         ui.label(egui::RichText::new("Entradas vs Saídas por Dia").size(13.0).strong());
         ui.add_space(4.0);
 
+        let n_dias = dados_dia.len();
+        let labels_mensal: Vec<String> = dados_dia.iter().map(|(d, _, _, _)| d.clone()).collect();
+        let labels_mensal_fmt = labels_mensal.clone();
+
         let mut barras_e: Vec<Bar> = Vec::new();
         let mut barras_s: Vec<Bar> = Vec::new();
-        let labels_dia: Vec<(f64, String)> = dados_dia
-            .iter()
-            .enumerate()
-            .map(|(i, (dia, _, _))| (i as f64 * 2.0 + 0.45, dia.clone()))
-            .collect();
-
-        for (i, (_dia, ent, sai)) in dados_dia.iter().enumerate() {
+        for (i, (_, ent, sai, _)) in dados_dia.iter().enumerate() {
             barras_e.push(
-                Bar::new(i as f64 * 2.0, *ent as f64)
-                    .width(0.85)
+                Bar::new(i as f64 - 0.25, *ent as f64)
+                    .width(0.4)
                     .fill(Cores::VERDE),
             );
             barras_s.push(
-                Bar::new(i as f64 * 2.0 + 0.95, *sai as f64)
-                    .width(0.85)
+                Bar::new(i as f64 + 0.25, *sai as f64)
+                    .width(0.4)
                     .fill(Cores::VERMELHO),
             );
         }
 
         Plot::new("mensal_chart")
-            .height(180.0)
+            .height(220.0)
             .allow_zoom(false)
             .allow_drag(false)
             .allow_scroll(false)
-            .show_axes([false, true])
+            .include_y(0.0)
+            .include_x(-0.7)
+            .include_x(n_dias as f64 - 0.3)
             .x_axis_formatter(move |mark, _range| {
-                let x = mark.value;
-                labels_dia
-                    .iter()
-                    .min_by(|a, b| {
-                        let da = (a.0 - x).abs();
-                        let db = (b.0 - x).abs();
-                        da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
-                    })
-                    .map(|(_, s)| format!("dia {}", s))
-                    .unwrap_or_default()
+                let i = mark.value.round() as i64;
+                if i >= 0
+                    && (i as usize) < labels_mensal_fmt.len()
+                    && (mark.value - i as f64).abs() < 0.2
+                {
+                    format!("dia {}", labels_mensal_fmt[i as usize])
+                } else {
+                    String::new()
+                }
             })
             .show(ui, |plot_ui| {
                 plot_ui.bar_chart(BarChart::new(barras_e).name("Entradas"));
                 plot_ui.bar_chart(BarChart::new(barras_s).name("Saídas"));
+            });
+
+        ui.add_space(4.0);
+        TableBuilder::new(ui)
+            .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+            .column(Column::initial(55.0))
+            .column(Column::initial(110.0))
+            .column(Column::initial(100.0))
+            .column(Column::initial(120.0))
+            .header(22.0, |mut h| {
+                h.col(|ui| { ui.strong("Dia"); });
+                h.col(|ui| { ui.strong("Entradas"); });
+                h.col(|ui| { ui.strong("Saídas"); });
+                h.col(|ui| { ui.strong("Lucro"); });
+            })
+            .body(|mut body| {
+                for (dia, ent, sai, lucro) in &dados_dia {
+                    body.row(20.0, |mut row| {
+                        row.col(|ui| { ui.label(format!("dia {}", dia)); });
+                        row.col(|ui| {
+                            ui.colored_label(Cores::VERDE, format!("{} un.", ent));
+                        });
+                        row.col(|ui| {
+                            ui.colored_label(Cores::VERMELHO, format!("{} un.", sai));
+                        });
+                        row.col(|ui| {
+                            ui.colored_label(
+                                egui::Color32::from_rgb(40, 80, 140),
+                                format!("R$ {:.2}", lucro),
+                            );
+                        });
+                    });
+                }
             });
         ui.add_space(8.0);
     }
@@ -297,11 +339,11 @@ fn show_mensal(app: &mut App, ui: &mut egui::Ui) {
             TableBuilder::new(ui)
                 .resizable(true)
                 .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-                .column(Column::initial(130.0))
-                .column(Column::initial(70.0))
-                .column(Column::remainder().at_least(160.0))
+                .column(Column::initial(110.0))
                 .column(Column::initial(60.0))
-                .column(Column::initial(180.0))
+                .column(Column::initial(160.0))
+                .column(Column::initial(50.0))
+                .column(Column::remainder().at_least(80.0))
                 .header(28.0, |mut h| {
                     h.col(|ui| { ui.strong("Data/Hora"); });
                     h.col(|ui| { ui.strong("Tipo"); });
