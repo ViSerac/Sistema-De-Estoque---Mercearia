@@ -152,31 +152,31 @@ fn show_estoque_baixo(app: &mut App, ui: &mut egui::Ui) {
                 })
                 .body(|mut body| {
                     let produtos = app.relatorios_state.estoque_baixo.clone();
+                    let alerta_bg = if app.dark_mode {
+                        egui::Color32::from_rgb(70, 40, 10)
+                    } else {
+                        Cores::LINHA_ALERTA
+                    };
                     for p in &produtos {
                         body.row(26.0, |mut row| {
                             row.col(|ui| {
-                                ui.painter()
-                                    .rect_filled(ui.max_rect(), 0.0, Cores::LINHA_ALERTA);
+                                ui.painter().rect_filled(ui.max_rect(), 0.0, alerta_bg);
                                 ui.colored_label(Cores::LARANJA, &p.nome);
                             });
                             row.col(|ui| {
-                                ui.painter()
-                                    .rect_filled(ui.max_rect(), 0.0, Cores::LINHA_ALERTA);
+                                ui.painter().rect_filled(ui.max_rect(), 0.0, alerta_bg);
                                 ui.label(&p.categoria_nome);
                             });
                             row.col(|ui| {
-                                ui.painter()
-                                    .rect_filled(ui.max_rect(), 0.0, Cores::LINHA_ALERTA);
+                                ui.painter().rect_filled(ui.max_rect(), 0.0, alerta_bg);
                                 ui.colored_label(Cores::VERMELHO, p.quantidade_atual.to_string());
                             });
                             row.col(|ui| {
-                                ui.painter()
-                                    .rect_filled(ui.max_rect(), 0.0, Cores::LINHA_ALERTA);
+                                ui.painter().rect_filled(ui.max_rect(), 0.0, alerta_bg);
                                 ui.label(p.estoque_minimo.to_string());
                             });
                             row.col(|ui| {
-                                ui.painter()
-                                    .rect_filled(ui.max_rect(), 0.0, Cores::LINHA_ALERTA);
+                                ui.painter().rect_filled(ui.max_rect(), 0.0, alerta_bg);
                                 let deficit = p.estoque_minimo - p.quantidade_atual;
                                 ui.colored_label(Cores::VERMELHO, deficit.to_string());
                             });

@@ -262,7 +262,7 @@ impl eframe::App for App {
 
         let tela = self.tela_atual;
         egui::CentralPanel::default()
-            .frame(Frame::default().fill(Cores::FUNDO).inner_margin(Margin::same(20)))
+            .frame(Frame::default().fill(ctx.style().visuals.panel_fill).inner_margin(Margin::same(20)))
             .show(ctx, |ui| match tela {
                 Tela::Dashboard => dashboard::show(self, ui),
                 Tela::Produtos => produtos::show(self, ui, ctx),

@@ -4,10 +4,10 @@ use super::theme::Cores;
 
 pub fn card_estatistica(ui: &mut egui::Ui, titulo: &str, valor: &str, cor: Color32) {
     Frame::default()
-        .fill(Cores::BRANCO)
+        .fill(ui.visuals().window_fill)
         .corner_radius(CornerRadius::same(6))
         .inner_margin(Margin::same(14))
-        .stroke(egui::Stroke::new(1.0, Color32::from_rgb(220, 225, 235)))
+        .stroke(egui::Stroke::new(1.0, ui.visuals().widgets.noninteractive.bg_stroke.color))
         .show(ui, |ui| {
             ui.set_min_width(130.0);
             ui.colored_label(cor, titulo);
