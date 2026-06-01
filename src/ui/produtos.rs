@@ -298,10 +298,10 @@ fn show_form(app: &mut App, ui: &mut egui::Ui) {
     ui.add_space(4.0);
 
     egui::Frame::default()
-        .fill(egui::Color32::WHITE)
+        .fill(ui.visuals().window_fill)
         .corner_radius(egui::CornerRadius::same(6))
         .inner_margin(egui::Margin::same(20))
-        .stroke(egui::Stroke::new(1.0, egui::Color32::from_rgb(220, 225, 235)))
+        .stroke(egui::Stroke::new(1.0, ui.visuals().widgets.noninteractive.bg_stroke.color))
         .show(ui, |ui| {
             egui::Grid::new("form_produto")
                 .num_columns(2)

@@ -13,7 +13,7 @@ pub struct LoginState {
 
 pub fn show(app: &mut App, ctx: &egui::Context) {
     egui::CentralPanel::default()
-        .frame(Frame::default().fill(Cores::FUNDO))
+        .frame(Frame::default().fill(ctx.style().visuals.panel_fill))
         .show(ctx, |ui| {
             let height = ui.available_height();
             ui.add_space(height * 0.15);
@@ -43,10 +43,10 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
                 ui.add_space(24.0);
 
                 Frame::default()
-                    .fill(Color32::WHITE)
+                    .fill(ui.visuals().window_fill)
                     .corner_radius(CornerRadius::same(6))
                     .inner_margin(Margin::same(24))
-                    .stroke(egui::Stroke::new(1.0, Color32::from_rgb(220, 225, 235)))
+                    .stroke(egui::Stroke::new(1.0, ui.visuals().widgets.noninteractive.bg_stroke.color))
                     .show(ui, |ui| {
                         ui.label(egui::RichText::new("Entrar").size(18.0).strong());
                         ui.add_space(16.0);

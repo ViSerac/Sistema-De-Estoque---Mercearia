@@ -4,6 +4,7 @@ pub struct Cores;
 
 impl Cores {
     pub const FUNDO: Color32 = Color32::from_rgb(245, 247, 250);
+    pub const FUNDO_DARK: Color32 = Color32::from_rgb(22, 24, 33);
     pub const SIDEBAR_BG: Color32 = Color32::from_rgb(37, 55, 80);
     pub const SIDEBAR_TEXT: Color32 = Color32::from_rgb(210, 220, 235);
     pub const SIDEBAR_SEL: Color32 = Color32::from_rgb(52, 85, 130);
@@ -13,12 +14,24 @@ impl Cores {
     pub const VERDE: Color32 = Color32::from_rgb(60, 160, 80);
     pub const LINHA_ALERTA: Color32 = Color32::from_rgb(255, 240, 225);
     pub const BRANCO: Color32 = Color32::WHITE;
+    pub const CARD_DARK: Color32 = Color32::from_rgb(32, 35, 50);
 }
 
-pub fn apply_theme(ctx: &egui::Context) {
-    let mut visuals = egui::Visuals::light();
-    visuals.panel_fill = Cores::FUNDO;
-    visuals.window_fill = Color32::WHITE;
+pub fn apply_theme(ctx: &egui::Context, dark_mode: bool) {
+    let mut visuals = if dark_mode {
+        egui::Visuals::dark()
+    } else {
+        egui::Visuals::light()
+    };
+
+    if dark_mode {
+        visuals.panel_fill = Cores::FUNDO_DARK;
+        visuals.window_fill = Cores::CARD_DARK;
+    } else {
+        visuals.panel_fill = Cores::FUNDO;
+        visuals.window_fill = Color32::WHITE;
+    }
+
     ctx.set_visuals(visuals);
 
     let mut style = (*ctx.style()).clone();

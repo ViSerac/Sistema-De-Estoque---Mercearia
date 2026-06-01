@@ -41,10 +41,10 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, ctx: &egui::Context) {
     let editando = app.categorias_state.editando_id.is_some();
 
     egui::Frame::default()
-        .fill(egui::Color32::WHITE)
+        .fill(ui.visuals().window_fill)
         .corner_radius(egui::CornerRadius::same(6))
         .inner_margin(egui::Margin::same(12))
-        .stroke(egui::Stroke::new(1.0, egui::Color32::from_rgb(220, 225, 235)))
+        .stroke(egui::Stroke::new(1.0, ui.visuals().widgets.noninteractive.bg_stroke.color))
         .show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.label(if editando { "Nome:" } else { "Nova categoria:" });

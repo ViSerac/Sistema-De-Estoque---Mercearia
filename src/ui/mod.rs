@@ -37,6 +37,7 @@ pub struct App {
     pub conn: rusqlite::Connection,
     pub tela_atual: Tela,
     pub usuario_atual: Option<Usuario>,
+    pub dark_mode: bool,
 
     pub login_state: LoginState,
     pub dashboard_state: DashboardState,
@@ -56,6 +57,7 @@ impl App {
             conn,
             tela_atual: Tela::Login,
             usuario_atual: None,
+            dark_mode: false,
             login_state: LoginState::default(),
             dashboard_state: DashboardState::default(),
             produtos_state: ProdutosState::default(),
@@ -147,6 +149,27 @@ impl App {
 
                 ui.with_layout(Layout::bottom_up(egui::Align::LEFT), |ui| {
                     ui.add_space(12.0);
+
+                    let icon = if self.dark_mode { "☀  Claro" } else { "🌙  Escuro" };
+                    ui.horizontal(|ui| {
+                        ui.add_space(10.0);
+                        if ui
+                            .add(
+                                egui::Button::new(
+                                    egui::RichText::new(icon)
+                                        .color(Color32::from_rgb(180, 200, 230))
+                                        .size(13.0),
+                                )
+                                .fill(Color32::TRANSPARENT)
+                                .min_size(egui::vec2(155.0, 26.0)),
+                            )
+                            .clicked()
+                        {
+                            self.dark_mode = !self.dark_mode;
+                        }
+                    });
+
+                    ui.add_space(4.0);
                     ui.separator();
                     ui.add_space(8.0);
 
@@ -217,7 +240,7 @@ fn selectable_nav(ui: &mut egui::Ui, label: &str, selected: bool) -> egui::Respo
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        apply_theme(ctx);
+        apply_theme(ctx, self.dark_mode);
 
         if self.feedback.is_some() {
             self.feedback_timer -= ctx.input(|i| i.stable_dt);
