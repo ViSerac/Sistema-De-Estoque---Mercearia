@@ -161,11 +161,21 @@ fn show_form(app: &mut App, ui: &mut egui::Ui, tipo: TipoMovimentacao) {
                         .map(|p| format!("{} ({} un.)", p.nome, p.quantidade_atual))
                         .unwrap_or_else(|| "Selecione...".into());
 
-                    let filtro = app.movimentacoes_state.filtro_produto_form.to_lowercase();
-                    egui::ComboBox::from_id_salt("prod_sel_mov")
-                        .selected_text(sel_nome)
-                        .width(320.0)
-                        .show_ui(ui, |ui| {
+                    let popup_id = ui.make_persistent_id("prod_sel_mov_popup");
+                    let btn_resp = ui.add(
+                        egui::Button::new(format!("{} ▾", sel_nome))
+                            .min_size(egui::vec2(320.0, 24.0)),
+                    );
+                    if btn_resp.clicked() {
+                        ui.memory_mut(|m| m.toggle_popup(popup_id));
+                    }
+                    egui::popup_below_widget(
+                        ui,
+                        popup_id,
+                        &btn_resp,
+                        egui::PopupCloseBehavior::CloseOnClickOutside,
+                        |ui| {
+                            ui.set_min_width(320.0);
                             ui.add(
                                 egui::TextEdit::singleline(
                                     &mut app.movimentacoes_state.filtro_produto_form,
@@ -174,25 +184,34 @@ fn show_form(app: &mut App, ui: &mut egui::Ui, tipo: TipoMovimentacao) {
                                 .desired_width(296.0),
                             );
                             ui.separator();
-                            for p in &prods {
-                                if filtro.is_empty()
-                                    || p.nome.to_lowercase().contains(&filtro)
-                                {
-                                    let label =
-                                        format!("{} ({} un.)", p.nome, p.quantidade_atual);
-                                    if ui
-                                        .selectable_value(
-                                            &mut app.movimentacoes_state.produto_id_form,
-                                            p.id,
-                                            label,
-                                        )
-                                        .clicked()
-                                    {
-                                        app.movimentacoes_state.filtro_produto_form.clear();
+                            let filtro =
+                                app.movimentacoes_state.filtro_produto_form.to_lowercase();
+                            egui::ScrollArea::vertical()
+                                .id_salt("prod_popup_scroll")
+                                .max_height(200.0)
+                                .show(ui, |ui| {
+                                    for p in &prods {
+                                        if filtro.is_empty()
+                                            || p.nome.to_lowercase().contains(&filtro)
+                                        {
+                                            let label = format!(
+                                                "{} ({} un.)",
+                                                p.nome, p.quantidade_atual
+                                            );
+                                            let selected = p.id
+                                                == app.movimentacoes_state.produto_id_form;
+                                            if ui.selectable_label(selected, label).clicked() {
+                                                app.movimentacoes_state.produto_id_form = p.id;
+                                                app.movimentacoes_state
+                                                    .filtro_produto_form
+                                                    .clear();
+                                                ui.memory_mut(|m| m.close_popup());
+                                            }
+                                        }
                                     }
-                                }
-                            }
-                        });
+                                });
+                        },
+                    );
                     ui.end_row();
 
                     ui.label("Quantidade *");
