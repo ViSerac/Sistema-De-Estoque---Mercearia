@@ -79,7 +79,6 @@ pub fn registrar_entrada(
     let p = produto::buscar_por_id(conn, produto_id)?
         .ok_or(ErroEstoque::ProdutoNaoEncontrado)?;
     let nova_qtd = p.quantidade_atual + quantidade;
-    produto::atualizar_quantidade(conn, produto_id, nova_qtd)?;
     let mov = Movimentacao {
         id: 0,
         tipo: TipoMovimentacao::Entrada,
@@ -91,8 +90,16 @@ pub fn registrar_entrada(
         usuario_id,
         usuario_nome: usuario_nome.to_string(),
     };
-    movimentacao::inserir(conn, &mov)?;
-    Ok(())
+    conn.execute_batch("BEGIN")?;
+    let resultado = (|| -> Result<(), ErroEstoque> {
+        produto::atualizar_quantidade(conn, produto_id, nova_qtd)?;
+        movimentacao::inserir(conn, &mov)?;
+        Ok(())
+    })();
+    match resultado {
+        Ok(_) => { conn.execute_batch("COMMIT")?; Ok(()) }
+        Err(e) => { let _ = conn.execute_batch("ROLLBACK"); Err(e) }
+    }
 }
 
 pub fn registrar_saida(
@@ -114,7 +121,6 @@ pub fn registrar_saida(
         });
     }
     let nova_qtd = p.quantidade_atual - quantidade;
-    produto::atualizar_quantidade(conn, produto_id, nova_qtd)?;
     let mov = Movimentacao {
         id: 0,
         tipo: TipoMovimentacao::Saida,
@@ -126,6 +132,14 @@ pub fn registrar_saida(
         usuario_id,
         usuario_nome: usuario_nome.to_string(),
     };
-    movimentacao::inserir(conn, &mov)?;
-    Ok(())
+    conn.execute_batch("BEGIN")?;
+    let resultado = (|| -> Result<(), ErroEstoque> {
+        produto::atualizar_quantidade(conn, produto_id, nova_qtd)?;
+        movimentacao::inserir(conn, &mov)?;
+        Ok(())
+    })();
+    match resultado {
+        Ok(_) => { conn.execute_batch("COMMIT")?; Ok(()) }
+        Err(e) => { let _ = conn.execute_batch("ROLLBACK"); Err(e) }
+    }
 }

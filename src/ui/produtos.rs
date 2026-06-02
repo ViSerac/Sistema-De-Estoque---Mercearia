@@ -412,8 +412,8 @@ fn abrir_edicao(app: &mut App, p: &Produto) {
         nome: p.nome.clone(),
         codigo_de_barras: p.codigo_de_barras.clone(),
         categoria_id: p.categoria_id,
-        preco_custo: format!("{:.2}", p.preco_custo),
-        preco_de_venda: format!("{:.2}", p.preco_de_venda),
+        preco_custo: format!("{:.2}", p.preco_custo).replace('.', ","),
+        preco_de_venda: format!("{:.2}", p.preco_de_venda).replace('.', ","),
         estoque_minimo: p.estoque_minimo.to_string(),
         quantidade_atual: p.quantidade_atual.to_string(),
     };

@@ -65,6 +65,9 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             app.movimentacoes_state.modo = ModoMovimentacao::RegistrarEntrada;
             app.movimentacoes_state.erro_form = None;
             app.movimentacoes_state.filtro_produto_form.clear();
+            app.movimentacoes_state.quantidade_form.clear();
+            app.movimentacoes_state.motivo_form.clear();
+            app.movimentacoes_state.produto_id_form = 0;
         }
         if ui
             .selectable_label(modo == ModoMovimentacao::RegistrarSaida, "Registrar Saída")
@@ -73,6 +76,9 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             app.movimentacoes_state.modo = ModoMovimentacao::RegistrarSaida;
             app.movimentacoes_state.erro_form = None;
             app.movimentacoes_state.filtro_produto_form.clear();
+            app.movimentacoes_state.quantidade_form.clear();
+            app.movimentacoes_state.motivo_form.clear();
+            app.movimentacoes_state.produto_id_form = 0;
         }
     });
     ui.separator();
