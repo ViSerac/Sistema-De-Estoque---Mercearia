@@ -246,7 +246,7 @@ fn show_lista(app: &mut App, ui: &mut egui::Ui, ctx: &egui::Context) {
                                             .add(
                                                 egui::Button::new("Excluir")
                                                     .small()
-                                                    .fill(egui::Color32::from_rgb(240, 220, 218)),
+                                                    .fill(egui::Color32::from_rgb(180, 60, 55)),
                                             )
                                             .clicked()
                                     {
