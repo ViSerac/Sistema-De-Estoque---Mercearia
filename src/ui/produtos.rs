@@ -194,36 +194,41 @@ fn show_lista(app: &mut App, ui: &mut egui::Ui, ctx: &egui::Context) {
                     h.col(|ui| { ui.strong("Ações"); });
                 })
                 .body(|mut body| {
+                    let alerta_bg = if app.dark_mode {
+                        egui::Color32::from_rgb(70, 40, 10)
+                    } else {
+                        Cores::LINHA_ALERTA
+                    };
                     for p in &produtos {
                         let baixo = p.estoque_baixo();
                         let p_clone = p.clone();
                         body.row(26.0, |mut row| {
                             row.col(|ui| {
                                 if baixo {
-                                    ui.painter().rect_filled(ui.max_rect(), 0.0, Cores::LINHA_ALERTA);
+                                    ui.painter().rect_filled(ui.max_rect(), 0.0, alerta_bg);
                                     ui.colored_label(Cores::LARANJA, &p_clone.nome);
                                 } else {
                                     ui.label(&p_clone.nome);
                                 }
                             });
                             row.col(|ui| {
-                                if baixo { ui.painter().rect_filled(ui.max_rect(), 0.0, Cores::LINHA_ALERTA); }
+                                if baixo { ui.painter().rect_filled(ui.max_rect(), 0.0, alerta_bg); }
                                 ui.label(&p_clone.codigo_de_barras);
                             });
                             row.col(|ui| {
-                                if baixo { ui.painter().rect_filled(ui.max_rect(), 0.0, Cores::LINHA_ALERTA); }
+                                if baixo { ui.painter().rect_filled(ui.max_rect(), 0.0, alerta_bg); }
                                 ui.label(&p_clone.categoria_nome);
                             });
                             row.col(|ui| {
-                                if baixo { ui.painter().rect_filled(ui.max_rect(), 0.0, Cores::LINHA_ALERTA); }
+                                if baixo { ui.painter().rect_filled(ui.max_rect(), 0.0, alerta_bg); }
                                 ui.label(format!("R$ {:.2}", p_clone.preco_custo));
                             });
                             row.col(|ui| {
-                                if baixo { ui.painter().rect_filled(ui.max_rect(), 0.0, Cores::LINHA_ALERTA); }
+                                if baixo { ui.painter().rect_filled(ui.max_rect(), 0.0, alerta_bg); }
                                 ui.label(format!("R$ {:.2}", p_clone.preco_de_venda));
                             });
                             row.col(|ui| {
-                                if baixo { ui.painter().rect_filled(ui.max_rect(), 0.0, Cores::LINHA_ALERTA); }
+                                if baixo { ui.painter().rect_filled(ui.max_rect(), 0.0, alerta_bg); }
                                 let cor = if baixo { Cores::LARANJA } else { Cores::VERDE };
                                 ui.colored_label(
                                     cor,
@@ -231,7 +236,7 @@ fn show_lista(app: &mut App, ui: &mut egui::Ui, ctx: &egui::Context) {
                                 );
                             });
                             row.col(|ui| {
-                                if baixo { ui.painter().rect_filled(ui.max_rect(), 0.0, Cores::LINHA_ALERTA); }
+                                if baixo { ui.painter().rect_filled(ui.max_rect(), 0.0, alerta_bg); }
                                 ui.horizontal(|ui| {
                                     if ui.small_button("Editar").clicked() {
                                         editar_produto = Some(p_clone.clone());
